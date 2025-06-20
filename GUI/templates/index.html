@@ -186,6 +186,14 @@
             border-bottom-right-radius: 3px;
         }
 
+        .message.user_input {
+            background: #4a5568;
+            color: #e2e8f0;
+            margin-left: auto;
+            border-bottom-right-radius: 3px;
+            border-left: 3px solid #38b2ac;
+        }
+
         .message.system {
             background: #264f78;
             color: #9cdcfe;
@@ -499,6 +507,181 @@
         /* Specific button hover effects */
         #planButton:hover:not(:disabled) {
             background: #f57c00;
+        }
+
+        /* Terminal Input Styles */
+        .terminal-input-container {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            margin-top: 15px;
+            padding: 15px;
+            display: none;
+        }
+
+        .terminal-input-container.show {
+            display: block;
+        }
+
+        .terminal-input-header {
+            margin-bottom: 15px;
+        }
+
+        .terminal-input-header h4 {
+            color: #569cd6;
+            margin: 0 0 5px 0;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-help {
+            color: #9cdcfe;
+            font-size: 0.85em;
+            margin: 0;
+            opacity: 0.8;
+        }
+
+        .terminal-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .input-mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .mode-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #3e3e42;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #cccccc;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #ff9800;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        #modeLabel {
+            color: #cccccc;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .terminal-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #terminalInput {
+            flex: 1;
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #cccccc;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        #terminalInput:focus {
+            outline: none;
+            border-color: #569cd6;
+            background: #1e1e1e;
+        }
+
+        #terminalInput::placeholder {
+            color: #666;
+        }
+
+        #terminalInput[type="password"] {
+            font-family: text-security-disc;
+            -webkit-text-security: disc;
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .terminal-btn:hover:not(:disabled) {
+            background: #005a9e;
+            transform: translateY(-1px);
+        }
+
+        .terminal-btn:active {
+            transform: translateY(0);
+        }
+
+        .terminal-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .terminal-btn.ctrl-btn {
+            background: #ff5722;
+            min-width: auto;
+            padding: 8px 10px;
+        }
+
+        .terminal-btn.ctrl-btn:hover:not(:disabled) {
+            background: #d84315;
         }
 
         .sidebar-header {
@@ -1228,6 +1411,41 @@
                     <!-- Task mode information will be displayed here -->
                 </div>
             </div>
+
+            <!-- Terminal Input Area -->
+            <div class="terminal-input-container" id="terminalInputContainer" style="display: none;">
+                <div class="terminal-input-header">
+                    <h4><i class="fas fa-terminal"></i> {{ i18n.terminal_input_title }}</h4>
+                    <p class="terminal-help">{{ i18n.terminal_input_help }}</p>
+                </div>
+                <div class="terminal-input-group">
+                    <div class="input-mode-toggle">
+                        <label class="mode-switch">
+                            <input type="checkbox" id="passwordMode">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="modeLabel">{{ i18n.text_mode }}</span>
+                    </div>
+                    <div class="terminal-input-wrapper">
+                        <input 
+                            type="text" 
+                            id="terminalInput" 
+                            placeholder="{{ i18n.terminal_input_placeholder }}"
+                        />
+                        <div class="terminal-buttons">
+                            <button class="terminal-btn send-btn" id="sendInputBtn">
+                                <i class="fas fa-paper-plane"></i> {{ i18n.send_input }}
+                            </button>
+                            <button class="terminal-btn ctrl-btn" id="sendCtrlCBtn" title="发送中断信号">
+                                <i class="fas fa-stop"></i> {{ i18n.send_ctrl_c }}
+                            </button>
+                            <button class="terminal-btn ctrl-btn" id="sendCtrlDBtn" title="发送EOF信号">
+                                <i class="fas fa-sign-out-alt"></i> {{ i18n.send_ctrl_d }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="resizer" id="resizer"></div>
@@ -1392,6 +1610,15 @@
         
         // Auto-scroll status indicator
         const autoScrollIndicator = document.getElementById('autoScrollIndicator');
+
+        // Terminal input elements
+        const terminalInputContainer = document.getElementById('terminalInputContainer');
+        const terminalInput = document.getElementById('terminalInput');
+        const passwordMode = document.getElementById('passwordMode');
+        const modeLabel = document.getElementById('modeLabel');
+        const sendInputBtn = document.getElementById('sendInputBtn');
+        const sendCtrlCBtn = document.getElementById('sendCtrlCBtn');
+        const sendCtrlDBtn = document.getElementById('sendCtrlDBtn');
 
         // Socket event listeners
         socket.on('connect', function() {
@@ -2638,12 +2865,62 @@
                 newTaskButton.style.display = 'none';
                 stopButton.style.display = 'flex';
                 updateStatus('running');
+                // Show terminal input when task is running
+                showTerminalInput();
             } else {
                 sendButton.style.display = 'flex';
                 planButton.style.display = 'flex';
                 newTaskButton.style.display = 'flex';
                 stopButton.style.display = 'none';
                 updateStatus('connected');
+                // Hide terminal input when task is not running
+                hideTerminalInput();
+            }
+        }
+
+        function showTerminalInput() {
+            if (terminalInputContainer) {
+                terminalInputContainer.classList.add('show');
+                terminalInputContainer.style.display = 'block';
+            }
+        }
+
+        function hideTerminalInput() {
+            if (terminalInputContainer) {
+                terminalInputContainer.classList.remove('show');
+                terminalInputContainer.style.display = 'none';
+                // Clear input when hiding
+                if (terminalInput) {
+                    terminalInput.value = '';
+                }
+            }
+        }
+
+        function sendTerminalInput(type) {
+            if (!isTaskRunning) {
+                addMessage('No task is currently running', 'error');
+                return;
+            }
+
+            let inputData = '';
+            if (type === 'text') {
+                inputData = terminalInput.value;
+                if (!inputData.trim() && type !== 'ctrl_c' && type !== 'ctrl_d') {
+                    return;
+                }
+                // Check if password mode is enabled
+                const inputType = passwordMode && passwordMode.checked ? 'password' : 'text';
+                socket.emit('send_input', {
+                    input: inputData,
+                    type: inputType
+                });
+                // Clear input after sending
+                terminalInput.value = '';
+            } else if (type === 'ctrl_c' || type === 'ctrl_d') {
+                socket.emit('send_input', {
+                    input: '',
+                    type: type
+                });
             }
         }
 
@@ -2791,6 +3068,42 @@
         });
 
         userInput.addEventListener('input', resizeTextarea);
+
+        // Terminal input event listeners
+        if (passwordMode) {
+            passwordMode.addEventListener('change', function() {
+                const isPasswordMode = passwordMode.checked;
+                terminalInput.type = isPasswordMode ? 'password' : 'text';
+                modeLabel.textContent = isPasswordMode ? I18N.password_mode : I18N.text_mode;
+            });
+        }
+
+        if (sendInputBtn) {
+            sendInputBtn.addEventListener('click', function() {
+                sendTerminalInput('text');
+            });
+        }
+
+        if (sendCtrlCBtn) {
+            sendCtrlCBtn.addEventListener('click', function() {
+                sendTerminalInput('ctrl_c');
+            });
+        }
+
+        if (sendCtrlDBtn) {
+            sendCtrlDBtn.addEventListener('click', function() {
+                sendTerminalInput('ctrl_d');
+            });
+        }
+
+        if (terminalInput) {
+            terminalInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendTerminalInput('text');
+                }
+            });
+        }
 
         // Chat scroll behavior management
         let scrollTimeout;

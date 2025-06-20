@@ -14,21 +14,21 @@ LANG=zh
 
 
 # SiliconFlow API configuration (currently active)
-api_key=your key
-api_base=https://api.siliconflow.cn/v1
+# api_key=your key
+# api_base=https://api.siliconflow.cn/v1
 # model=Qwen/Qwen3-32B
-model=Qwen/Qwen3-30B-A3B
+# model=Qwen/Qwen3-30B-A3B
 # model=Qwen/Qwen2.5-7B-Instruct
-max_tokens=4096
+# max_tokens=4096
 
 
 
 # Anthropic models
-# api_key=your key
-# api_base=https://api.openai-proxy.org/anthropic
-#model=claude-sonnet-4-0
+api_key=your key
+api_base=https://api.openai-proxy.org/anthropic
+model=claude-sonnet-4-0
 # model=claude-3-haiku-20240307
-# max_tokens=16384
+max_tokens=16384
 
 
 

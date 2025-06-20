@@ -28,6 +28,8 @@ from werkzeug.utils import secure_filename
 import multiprocessing
 import queue
 import re
+import signal
+import subprocess
 
 # Add parent directory to path to import config_loader
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -200,6 +202,17 @@ I18N_TEXTS = {
         'target_directory_not_exist': '目标目录不存在',
         'upload_success': '成功上传 {0} 个文件',
         'new_name_empty': '新名称不能为空',
+        
+        # Terminal input related
+        'terminal_input_placeholder': '输入文本或命令...',
+        'send_input': '发送',
+        'send_password': '发送密码',
+        'send_ctrl_c': 'Ctrl+C',
+        'send_ctrl_d': 'Ctrl+D',
+        'terminal_input_title': '终端输入',
+        'terminal_input_help': '您可以向正在运行的程序发送输入、密码或控制命令',
+        'password_mode': '密码模式',
+        'text_mode': '文本模式',
     },
     'en': {
         # Page title and basic info
@@ -342,6 +355,17 @@ I18N_TEXTS = {
         'target_directory_not_exist': 'Target directory does not exist',
         'upload_success': 'Successfully uploaded {0} files',
         'new_name_empty': 'New name cannot be empty',
+        
+        # Terminal input related
+        'terminal_input_placeholder': 'Enter text or command...',
+        'send_input': 'Send',
+        'send_password': 'Send Password',
+        'send_ctrl_c': 'Ctrl+C',
+        'send_ctrl_d': 'Ctrl+D',
+        'terminal_input_title': 'Terminal Input',
+        'terminal_input_help': 'You can send input, passwords or control commands to the running program',
+        'password_mode': 'Password Mode',
+        'text_mode': 'Text Mode',
     }
 }
 
@@ -350,7 +374,7 @@ def get_i18n_texts():
     current_lang = get_language()
     return I18N_TEXTS.get(current_lang, I18N_TEXTS['en'])
 
-def execute_agibot_task_process_target(user_requirement, output_queue, out_dir=None, continue_mode=False, plan_mode=False):
+def execute_agibot_task_process_target(user_requirement, output_queue, input_queue, out_dir=None, continue_mode=False, plan_mode=False):
     # Get i18n texts for this process
     i18n = get_i18n_texts()
     """
@@ -485,6 +509,7 @@ class AGIBotGUI:
     def __init__(self):
         self.current_process = None
         self.output_queue = None
+        self.input_queue = None  # 新增：用于接收用户输入的队列
         self.current_output_dir = None  # Track current execution output directory
         self.last_output_dir = None     # Track last used output directory
         self.selected_output_dir = None # Track user selected output directory
@@ -631,6 +656,7 @@ def queue_reader_thread():
         gui_instance.current_process.join(timeout=1)
     gui_instance.current_process = None
     gui_instance.output_queue = None
+    gui_instance.input_queue = None  # 清理输入队列
     if gui_instance.current_output_dir:
         gui_instance.last_output_dir = gui_instance.current_output_dir
     gui_instance.current_output_dir = None  # Clear current directory mark
@@ -1169,10 +1195,11 @@ def handle_execute_task(data):
             out_dir = os.path.join(gui_instance.output_dir, f"output_{timestamp}")
     
     gui_instance.output_queue = multiprocessing.Queue()
+    gui_instance.input_queue = multiprocessing.Queue()  # 新增输入队列
     
     gui_instance.current_process = multiprocessing.Process(
                     target=execute_agibot_task_process_target,
-        args=(user_requirement, gui_instance.output_queue, out_dir, continue_mode, plan_mode)
+        args=(user_requirement, gui_instance.output_queue, gui_instance.input_queue, out_dir, continue_mode, plan_mode)
     )
     gui_instance.current_process.daemon = True
     gui_instance.current_process.start()
@@ -1208,6 +1235,48 @@ def handle_stop_task():
         socketio.emit('task_stopped', {'message': i18n['task_stopped'], 'type': 'error'})
     else:
         socketio.emit('output', {'message': i18n['no_task_running'], 'type': 'info'})
+
+@socketio.on('send_input')
+def handle_send_input(data):
+    """Handle user input to terminal"""
+    i18n = get_i18n_texts()
+    
+    if not gui_instance.current_process or not gui_instance.current_process.is_alive():
+        socketio.emit('output', {'message': i18n['no_task_running'], 'type': 'info'})
+        return
+    
+    user_input = data.get('input', '')
+    input_type = data.get('type', 'text')  # 'text', 'password', 'ctrl_c', 'ctrl_d', etc.
+    
+    if input_type == 'ctrl_c':
+        # Send SIGINT to the process
+        try:
+            gui_instance.current_process.terminate()
+            socketio.emit('output', {'message': '🛑 已发送 Ctrl+C 中断信号', 'type': 'info'})
+        except Exception as e:
+            socketio.emit('output', {'message': f'❌ 发送中断信号失败: {str(e)}', 'type': 'error'})
+    elif input_type == 'ctrl_d':
+        # Send EOF signal
+        try:
+            if gui_instance.input_queue:
+                gui_instance.input_queue.put({'type': 'eof'})
+            socketio.emit('output', {'message': '📤 已发送 Ctrl+D (EOF)', 'type': 'info'})
+        except Exception as e:
+            socketio.emit('output', {'message': f'❌ 发送EOF信号失败: {str(e)}', 'type': 'error'})
+    elif input_type in ['text', 'password']:
+        # Send text input
+        try:
+            if gui_instance.input_queue:
+                gui_instance.input_queue.put({'type': input_type, 'data': user_input})
+                # Don't echo password input
+                if input_type == 'password':
+                    socketio.emit('output', {'message': '🔑 已发送密码输入', 'type': 'info'})
+                else:
+                    socketio.emit('output', {'message': f'📤 用户输入: {user_input}', 'type': 'user_input'})
+            else:
+                socketio.emit('output', {'message': '❌ 无法发送输入：进程未正确初始化', 'type': 'error'})
+        except Exception as e:
+            socketio.emit('output', {'message': f'❌ 发送输入失败: {str(e)}', 'type': 'error'})
 
 @socketio.on('create_new_directory')
 def handle_create_new_directory():
